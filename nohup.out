@@ -1,6 +1,0 @@
-cygwin warning:
-  MS-DOS style path detected: c:/Users/ssiruguri/Desktop/Personal/code/gdd/gdd.py
-  Preferred POSIX equivalent is: /cygdrive/c/Users/ssiruguri/Desktop/Personal/code/gdd/gdd.py
-  CYGWIN environment variable option "nodosfilewarning" turns off this warning.
-  Consult the user's guide for more details about POSIX paths:
-    http://cygwin.com/cygwin-ug-net/using.html#using-pathnames
