@@ -1,0 +1,43 @@
+# This script will take a URL and create a local webpage that works, by substituting the URLs the right way
+
+require 'getoptlong'
+require 'nokogiri'
+
+opts = GetoptLong.new(
+  [ '--help', '-h', GetoptLong::NO_ARGUMENT ],
+  [ '--url', '-u', GetoptLong::REQUIRED_ARGUMENT]
+)
+
+def error_exit(msg)
+  puts "Error found... exiting ..."
+  puts msg
+  exit -1
+end
+  
+def print_help_and_exit
+  puts <<EOS
+  #{__FILE__} [options]
+
+  Options:
+    -u, --url: URL to download
+
+EOS
+  exit 0
+end
+
+url = ''
+
+opts.each do |opt, arg|
+   case opt
+     when '--help'
+     print_help_and_exit
+     
+     when '--url'
+     url = arg.to_s
+   end
+end
+     
+if url == ''
+  print_help_and_exit
+end
+
