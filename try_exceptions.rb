@@ -1,6 +1,6 @@
 begin
   b="hello world!"
-  puts c
+  puts b
   
   r=Regexp.new("**")
 rescue NameError => e
@@ -8,5 +8,5 @@ rescue NameError => e
 rescue RegexpError => e
   puts "Something can't be parsed in a regex? #{e.message}"
 else
-  puts "Something I 
+  puts "Something I don't know about."
 end
