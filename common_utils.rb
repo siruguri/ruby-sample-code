@@ -17,5 +17,9 @@ EOS
     puts "ERROR: #{msg}"
     exit -1
   end
+
+  def self.log_msg(msg)
+    puts "#{msg}"
+  end
 end
 

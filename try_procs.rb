@@ -32,10 +32,40 @@ def return_behave
   return a
 end
 
+def nested_scopes(func)
+  sum=1
+  [1,2].each { |x| func.call x }
+  puts sum
+end
+
 x = 5
 puts "value of x before: #{x}"
 thrice { if !defined? y then y=0; end; y += 1; puts y }
 puts "value of x and y after: #{x}"
 
-fn=return_behave
-puts fn.call
+fn=return_behave; puts fn.call
+
+var='sum'
+p1 = lambda { |x| code = "#{var} = #{var} + x";  eval code }
+
+# shd print 3
+sum=0;  [1,2].each { |x| p1.call x }; puts sum
+
+# shd print 1 and 6
+nested_scopes p1
+puts sum
+
+var='sum1'
+# shd error out
+begin
+  sum=0;  [1,2].each { |x| p1.call x }; puts sum
+rescue NoMethodError => e
+  puts "Error #{e.message}"
+end
+
+# shd error out
+begin
+  nested_scopes p1
+rescue NoMethodError => e
+  puts "Error #{e.message}"
+end
