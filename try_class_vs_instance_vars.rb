@@ -1,37 +1,28 @@
-class Person
-  @count = 0
 
-  @name = "sameer is god"
-
-  def initialize(name)
-    @name=name
-    puts "Hi, #{name}"
-    self.class.count += 1
-    self.class.name += "and of #{name} too"
+class Animal
+  def say
   end
 
-  def self.name
-    @name
+  def number_of_legs
+    self.class.number_of_legs
   end
-
-  def self.name=(value)
-    @name = value
-  end
-
-  def self.count
-    @count
-  end
-  def self.count=(value)
-    @count = value
-  end
-
-  def name
-    @name
+  def self.number_of_legs
+    @number_of_legs
   end
 end
 
-arr=[]
-5.times { |i| arr << Person.new("#{i}") }
-puts "Pop: #{Person.count}; God: #{Person.name}"
+class Dog < Animal
+  @number_of_legs=4
+end
 
-puts arr[1].name
+class Human < Animal
+  @number_of_legs=2
+end
+
+
+d=Dog.new # 'rover'
+h=Human.new # 'mike'
+
+puts "Rover has #{d.number_of_legs} legs."
+puts "Mike has #{h.number_of_legs} legs."
+
