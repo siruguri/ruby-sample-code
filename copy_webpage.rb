@@ -4,18 +4,13 @@ require 'httpclient'
 require 'getoptlong'
 require 'nokogiri'
 require 'open-uri'
+require 'my_utilities'
 
 opts = GetoptLong.new(
   [ '--help', '-h', GetoptLong::NO_ARGUMENT ],
   [ '--url', '-u', GetoptLong::REQUIRED_ARGUMENT]
 )
 
-def error_exit(msg)
-  puts "Error found... exiting ..."
-  puts msg
-  exit -1
-end
-  
 def print_help_and_exit
   puts <<EOS
   #{__FILE__} [options]
@@ -33,7 +28,7 @@ url = ''
 opts.each do |opt, arg|
    case opt
      when '--help'
-     print_help_and_exit
+     MyUtilities::print_help_and_exit
      
      when '--url'
      url = arg.to_s
@@ -51,6 +46,7 @@ class WebpageCopier
     client = HTTPClient.new
     content = client.get_content(@url)
     @dom_root = Nokogiri::HTML(content)
+    @logger = MyUtilities::Logger.new
   end
 
   def fix_styles
@@ -74,7 +70,7 @@ class WebpageCopier
       src = locate_src node['src']
       name = write_to_file src, 'images'
       
-      node['src'] = "images/#{name}"
+      node['src'] = "images/#{name}" unless name.nil?
     end
   end
 
@@ -86,15 +82,31 @@ class WebpageCopier
 
   private
 
+  def make_dir(dirname)
+    # Create the directory if it doesn't already exist
+    unless Dir.exists? dirname
+      Dir.mkdir dirname
+    end
+  end
+    
+
   def write_to_file(src, write_dir)
     name = name_from_url src
     puts "Writing to file #{name}"
 
-    File.open("#{write_dir}/#{name}", 'wb') do |write_f|
-      read_handle = open(src, 'rb')
-      while (buff = read_handle.read(1024))
-        write_f.write(buff)
+    make_dir write_dir
+
+    begin
+      File.open("#{write_dir}/#{name}", 'wb') do |write_f|
+        read_handle = open(src, 'rb')
+        while (buff = read_handle.read(1024))
+          write_f.write(buff)
+        end
       end
+
+    rescue OpenURI::HTTPError => exc
+      @logger.fatal("Fetch error for URL, message is #{exc.message}")
+      return nil
     end
 
     return name
