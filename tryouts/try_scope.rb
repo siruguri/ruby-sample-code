@@ -1,25 +1,37 @@
-x=1
-
-def function_scope
-  # This won't work unless you comment out both lines
-  # x=1
-  # puts x
-end
+# Code in a yielded block is evaluated in the context of the block's
+# scope, unless the block is expliclity eval'ed in a different scope
 
 class Dog
-  def initialize(x)
-    @name = x
+  def initialize(name)
+    @name=name
   end
-
-
   def speak
-    word = "yap"
     yield @name
+  end
+  def add_fn
+    yield if block_given?
   end
 end
 
-d=Dog.new("rover")
+d=Dog.new('rover')
+d.speak do |n|
+  puts "My name is #{n}."
+  def just_a_fn
+    puts "It was a function."
+  end
+end
 
-word = "bow"
-d.speak { |name| puts "#{name} says #{word}" }
-function_scope
+d.add_fn do
+  puts "in block"
+  def just_a_fn
+    puts @name
+  end
+
+end
+
+puts "You should see the text 'It was a function'."
+just_a_fn
+
+puts "Calling just a fn..."
+d.just_a_fn
+

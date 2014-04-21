@@ -2,23 +2,40 @@
 
 class MyClass
   def hello
-    puts 'my hello'
+    'outside hello'
   end
 end
 
 module TryMod
   class MyClass
     def hello
-      puts 'hello'
+      'hello'
     end
   end
 
-  class TryClass
+  class InternalClass
     def initialize
       c=MyClass.new
-      c.hello # Should print hello
+      @mesg = c.hello # Should print hello
+    end
+
+    def mesg
+      @mesg
     end
   end
 end
 
-m=TryMod::TryClass.new # should print hello
+class ExternalClass
+  def initialize
+    c=MyClass.new
+    @mesg = c.hello # Should print hello
+  end
+
+  def mesg
+    @mesg
+  end
+end
+
+
+puts "This should output hello, not 'my hello': #{TryMod::InternalClass.new.mesg}" # should print hello
+puts "This should output 'outside hello', not 'hello': #{ExternalClass.new.mesg}" # should print hello
