@@ -14,7 +14,16 @@ end
 x = 5
 y = 42
 
-puts "value of x before: #{x}"
-thrice { y += 1; puts y }
-puts "value of x and y after: #{x}, #{y}"
+puts "value of x before should be 5: #{x==5}"
+thrice { y += 1 }
+puts "value of x and y after should be 5 and 45: #{x==5}, #{y==45}"
 
+def multiple_scopes(&blk)
+
+  blk.call
+
+end
+
+a=2
+multiple_scopes { a+=1 }
+puts "a should be 3: #{a==3}"

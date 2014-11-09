@@ -60,12 +60,13 @@ var='sum1'
 begin
   sum=0;  [1,2].each { |x| p1.call x }; puts sum
 rescue NoMethodError => e
-  puts "Error #{e.message}"
+  puts "Error when testing call #{e.message}"
 end
 
 # shd error out
 begin
   nested_scopes p1
 rescue NoMethodError => e
-  puts "Error #{e.message}"
+  puts "Error when testing nested_scopes #{e.message}"
 end
+
