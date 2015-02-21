@@ -1,12 +1,31 @@
-require 'open-uri'
 require 'json'
 require 'httparty'
 
-uri_string='https://api.finder.healthcare.gov/v3.0/getIFPPlanQuotes'
-uri_string='https://api.finder.healthcare.gov/v3.0/getIFPPlanBenefits'
+class NetHttpFetch
+  def initialize(uri='')
+    @uri_string = uri
+    @post_data = {}
+  end
+  
+  def post_url
+    @post_data.merge!({headers: {'Content-Type' => 'application/json'}})
 
-data=File.open('input.txt', 'r').readlines.join('')
-resp=HTTParty.post(uri_string, headers: {'Content-Type' => 'application/xml'},
-                   body: data )
-puts resp.body
-puts resp.code
+    @resp=HTTParty.post(@uri_string, @post_data)
+    {body: @resp.body}.merge(code_synonyms)
+  end
+
+  def post_data=(data_hash)
+    @post_data.merge!({body: data_hash.to_json})
+  end
+    
+  def get_url
+    @resp = HTTParty.get @uri_string
+    {body: @resp.body}.merge(code_synonyms)
+  end
+
+  private
+
+  def code_synonyms
+    {status_code: @resp.code, status: @resp.code, code: @resp.code}
+  end
+end
