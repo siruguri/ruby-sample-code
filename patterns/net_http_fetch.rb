@@ -46,7 +46,7 @@ class NetHttpFetch
         when :post
           ret=HTTParty.post(@uri_string, @post_data)
         end
-      rescue SocketError => e
+      rescue Errno::ETIMEDOUT, SocketError => e
         # When this error occurs, let's back off and re-try
         sleep 5
       else

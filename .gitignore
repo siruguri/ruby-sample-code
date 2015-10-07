@@ -8,3 +8,4 @@ try.rb
 *DS_Store
 redcarpet
 *.html
+.DS_Store
