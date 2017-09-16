@@ -44,3 +44,14 @@ end
 puts "Yesterday is today? #{is_it_today?(Time.now - 1.day) ? 'yes' : 'no'}"
 puts "Today is today? #{is_it_today?(Time.now) ? 'yes' : 'no'}"
 
+puts "The time between '2017-02-14T15:00:00-08:00' and '2017-02-14T17:30:00-08:00' is "
+s = DateTime.strptime '2017-02-14T15:00:00-08:00', "%Y-%m-%dT%H:%M:%S%:z"
+e = DateTime.strptime '2017-02-14T17:30:00-08:00', "%Y-%m-%dT%H:%M:%S%:z"
+print (e.to_i - s.to_i).to_f/3600
+puts " hours."
+
+puts "Epoch math"
+t = Time.now.to_i
+t = 1488790800
+puts "Right now, the epoch second count is #{t}"
+puts "And in datetime, that means it's #{DateTime.strptime(t.to_s,  '%s')}"

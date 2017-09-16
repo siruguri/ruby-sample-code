@@ -29,8 +29,8 @@ class NetHttpFetch
     @post_data.merge!({body: data_hash})
   end
     
-  def get_url
-    @resp = do_protected_call(:get)
+  def get_url(uri = nil)
+    @resp = do_protected_call(:get, uri)
     {body: @resp.body}.merge(code_synonyms)
   end
   alias :get :get_url
@@ -46,7 +46,7 @@ class NetHttpFetch
     {status_code: @resp.code, status: @resp.code, code: @resp.code}
   end
 
-  def do_protected_call(method)
+  def do_protected_call(method, uri = nil)
     # Run the HTTP requests within an exception rescue
     call_done = false
     ret = nil
@@ -61,14 +61,15 @@ class NetHttpFetch
     if @post_data.has_key? :basic_auth
       opts[:basic_auth] = @post_data[:basic_auth]
     end
-    
+
+    _u = uri || @uri_string
     while(!call_done)
       begin
         case method
         when :get
-          ret=HTTParty.get @uri_string, opts
+          ret=HTTParty.get _u, opts
         when :post
-          ret=HTTParty.post @uri_string, opts
+          ret=HTTParty.post _u, opts
         end
       rescue Errno::ETIMEDOUT, SocketError => e
         # When this error occurs, let's back off and re-try
@@ -83,3 +84,5 @@ class NetHttpFetch
   end
       
 end
+
+puts NetHttpFetch.new.get('https://twitter.com/search?q=%23npojobs&src=typd')
