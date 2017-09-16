@@ -5,6 +5,7 @@ class NetHttpFetch
   def initialize(uri: '')
     @uri_string = uri
     @post_data = {}
+    @opts = {}
   end
 
   def basic_auth(auth_hash = nil)
@@ -19,12 +20,17 @@ class NetHttpFetch
     @post_data.merge!({headers: hash})
   end
   
-  def post_url
-    @resp=do_protected_call(:post)
+  def post_url(uri = nil)
+    @resp=do_protected_call(:post, uri)
     {body: @resp.body}.merge(code_synonyms)
   end
   alias :post :post_url
 
+  def query_parameters(h)
+    @opts[:query] = h
+    self
+  end
+  
   def post_data=(data_hash)
     @post_data.merge!({body: data_hash})
   end
@@ -51,15 +57,14 @@ class NetHttpFetch
     call_done = false
     ret = nil
 
-    opts = {}
     if @post_data.has_key? :body
-      opts[:body] = @post_data[:body].to_json
+      @opts[:body] = @post_data[:body].to_json
     end
     if @post_data.has_key? :headers
-      opts[:headers] = @post_data[:headers]
+      @opts[:headers] = @post_data[:headers]
     end
     if @post_data.has_key? :basic_auth
-      opts[:basic_auth] = @post_data[:basic_auth]
+      @opts[:basic_auth] = @post_data[:basic_auth]
     end
 
     _u = uri || @uri_string
@@ -67,9 +72,9 @@ class NetHttpFetch
       begin
         case method
         when :get
-          ret=HTTParty.get _u, opts
+          ret=HTTParty.get _u, @opts
         when :post
-          ret=HTTParty.post _u, opts
+          ret=HTTParty.post _u, @opts
         end
       rescue Errno::ETIMEDOUT, SocketError => e
         # When this error occurs, let's back off and re-try
