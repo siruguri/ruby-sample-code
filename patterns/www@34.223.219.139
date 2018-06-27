@@ -1,0 +1,105 @@
+(setq package-user-dir "/usr/local/share/emacs/site-lisp/elpa")
+
+(require 'package)
+(setq package-archives '(("gnu" . "http://elpa.gnu.org/packages/")
+			 ("marmalade" . "http://marmalade-repo.org/packages/")
+			 ))
+
+;;(add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/") t)
+;;(add-to-list 'package-archives '("melpa" . "http://melpa.milkbox.net/packages/") t)
+(package-initialize)
+
+(modify-syntax-entry ?_ "w")
+
+(require 'package)
+(package-initialize)
+
+(let ((default-directory "/usr/local/share/emacs/site-lisp/"))
+  (normal-top-level-add-subdirs-to-load-path))
+
+(setq savehist-additional-variables    ;; also save...
+  '(search-ring regexp-search-ring)    ;; ... my search entries
+  savehist-file "~/.emacs.d/savehist") ;; keep my home clean
+(savehist-mode t) 
+
+(global-set-key (kbd "C-x C-b") 'electric-buffer-list)
+(global-set-key (kbd "C-x C-l") 'dabbrev-expand)
+
+(add-to-list 'load-path "~/code/emacs_modes")
+(add-to-list 'load-path "~/code/emacs_modes/haml-mode")
+
+
+(require 'haml-mode)
+
+(autoload 'coffee-mode "coffee-mode.el"
+   "Major mode for editing Coffee Script files" t)
+(setq auto-mode-alist (cons '("\\.coffee" . coffee-mode) auto-mode-alist))
+
+(autoload 'php-mode "php-mode.el"
+   "Major mode for editing PHP files" t)
+(setq auto-mode-alist (cons '("\\.php" . php-mode) auto-mode-alist))
+
+(autoload 'ruby-mode "ruby-mode.el"  "Major mode for editing Ruby files" t)
+(setq auto-mode-alist (cons '("\\.rb" . ruby-mode) auto-mode-alist))
+(setq ruby-insert-encoding-magic-comment nil)
+
+(setq make-backup-files nil)
+(when (cdr command-line-args)
+  (setcdr command-line-args (cons "--no-splash" (cdr command-line-args))))
+
+(add-to-list 'auto-mode-alist '("\\.p?html\\'" . web-mode))
+
+(require 'web-mode)
+(add-to-list 'auto-mode-alist '("\\.s?css\\'" . css-mode))
+(add-to-list 'auto-mode-alist '("\\.p?html\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.tpl\\.php\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.[gj]sp\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.as[cp]x\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.erb\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.mustache\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.djhtml\\'" . web-mode))
+
+(add-to-list 'auto-mode-alist '("\\.jsx$" . web-mode))
+(defadvice web-mode-highlight-part (around tweak-jsx activate)
+  (if (equal web-mode-content-type "jsx")
+      (let ((web-mode-enable-part-face nil))
+	ad-do-it)
+    ad-do-it))
+(setq read-file-name-completion-ignore-case t)
+
+;;(load "~/code/emacs_modes/nxhtml/autostart.el")
+;;(setq mumamo-background-colors nil)
+;;(load "~/code/emacs_modes/workaround_mumamo_warning.el")
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(coffee-tab-width 2)
+ '(css-indent-offset 2)
+ '(jsx-indent-level 2)
+ '(nxhtml-autoload-web nil t))
+
+(put 'upcase-region 'disabled nil)
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(font-lock-builtin-face ((t (:foreground "brightwhite"))))
+ '(font-lock-comment-face ((t (:foreground "orangered"))))
+ '(font-lock-constant-face ((t (:foreground "palegreen"))))
+ '(font-lock-function-name-face ((t (:foreground "color-178"))))
+ '(font-lock-keyword-face ((t (:foreground "deeppink1"))))
+ '(font-lock-string-face ((t (:foreground "bisque"))))
+ '(font-lock-type-face ((t (:foreground "CornflowerBlue"))))
+ '(font-lock-variable-name-face ((t (:foreground "yellow3"))))
+ '(web-mode-html-attr-name-face ((t (:foreground "brightyellow"))))
+ '(web-mode-html-tag-bracket-face ((t (:foreground "color-47"))))
+ '(web-mode-html-tag-face ((t (:foreground "brightred")))))
+
+(set-fill-column 120)
+
+;; Python Hook
+(add-hook 'python-mode-hook
+	  (function (lambda () (setq python-indent 2))))

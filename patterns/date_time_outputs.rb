@@ -10,6 +10,17 @@ DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', "Thursday", "Friday", "Satur
 
 # Make a time object from a string
 
+# What's the time now, in many zones?
+now = DateTime.now
+now_utc = now.in_time_zone 'UTC'
+
+# Look for the list in gems/ruby-2.4.0/gems/tzinfo-1.2.3//test/zoneinfo/*tab
+# or maybe something like https://github.com/tzinfo/tzinfo-data/blob/master/data/northamerica
+now_ny = now.in_time_zone(Time.find_zone!('America/New_York'))
+puts "Right now, in UTC, it's #{now_utc}"
+puts "\t and in sunny California, it's #{now}"
+puts "\t and in New York, it's #{now_ny}"
+
 # This was a Sunday
 a = Date.parse('2015-04-12')
 

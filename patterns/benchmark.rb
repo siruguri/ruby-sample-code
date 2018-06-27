@@ -9,7 +9,7 @@ class Candidates
     @rev[@hash['a']+ 'num'] = @hash['a']
     @rev[@hash['a']+ 'str'] = @hash['a'].to_i
   end
-  def patt2
+  def patt2 x
     key = @hash['a']
     @rev[key + 'num'] = key
     @rev[key + 'str'] = key.to_i
@@ -21,5 +21,5 @@ c = Candidates.new
 
 Benchmark.bmbm do |x|
   x.report { c.patt1 }
-  x.report { c.patt2 }
+  x.report { c.patt2 1 }
 end
