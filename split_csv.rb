@@ -78,8 +78,8 @@ class Splitter
     @_pe ||= Date.parse(arguments(2)).strftime('%b\s+1 %Y')
   end
 
-  def is_mri_rnt_last_two_days(fields)
-    fields[1] == 'A02' && (fields[3] == yesterday || fields[3] == day_before)
+  def is_rnt_last_two_days(fields)
+    fields[1] == @_arguments[0] && (fields[3] == yesterday || fields[3] == day_before)
   end
 
   def count_invoice_ledger_pairs(fields)
@@ -98,6 +98,5 @@ if ARGV.size < 3
   exit 1
 end
 
-#Splitter.new(ARGV[0], ARGV[1], if_condition: :is_mri_rnt_last_two_days).split
 s = Splitter.new(ARGV[0], ARGV[1], if_condition: ARGV[2], data_builder: :count_invoice_ledger_pairs, arguments: ARGV[3..-1])
 s.split
