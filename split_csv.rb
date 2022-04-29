@@ -42,7 +42,7 @@ class Splitter
 
   def more_recent_than(fields)
     begin
-      d = DateTime.strptime(fields[5].to_s, '%b %d %Y %H:%M%p').to_date
+      d = DateTime.strptime(fields[@_arguments[1].to_i].to_s, '%b %d %Y %H:%M%p').to_date
     rescue Date::Error
       return false
     end
