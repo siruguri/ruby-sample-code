@@ -15,7 +15,7 @@ class Splitter
   end
 
   def split
-    CSV.foreach(@filepath) do |fields|
+    CSV.foreach(@filepath, liberal_parsing: true) do |fields|
       fs = fields.map { |t| t&.strip }
       if if_condition.nil? || method(if_condition).call(fs)
         if output_position == -1
@@ -64,6 +64,28 @@ class Splitter
 
   def is_charge(fields)
     fields[23] == 'Invoice'
+  end
+
+  def expense_in_period(fields)
+    begin
+      postdate = long_date_field fields[13]
+    rescue
+      return
+    end
+
+    return false if postdate.nil?
+    postdate.year == arguments(0).to_i && postdate.month == arguments(1).to_i
+  end
+
+  def datetime_field(s)
+    return nil if s.blank?
+    DateTime.strptime(s, '%b %d %Y %H:%M%p')
+  end
+
+  def long_date_field(s)
+    # "Feb 13 2014 12:00AM" -- AKA
+    # '%b %d %Y %H:%M%p'
+    datetime_field(s)&.to_date
   end
 
   def expense_in_ledger_account(fields)
