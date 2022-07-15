@@ -77,6 +77,15 @@ class Splitter
     postdate.year == arguments(0).to_i && postdate.month == arguments(1).to_i
   end
 
+  def yardi_invoices_communities(fields)
+    community_id = fields[4]
+    community_id.in?(community_id_list)
+  end
+
+  def community_id_list
+    @cid_list ||= arguments(0).split(',').map(&:strip)
+  end
+
   def datetime_field(s)
     return nil if s.blank?
     DateTime.strptime(s, '%b %d %Y %H:%M%p')
@@ -115,10 +124,10 @@ class Splitter
   end
 end
 
-if ARGV.size < 3
-  puts "Help: provide filename, field position (-1 for whole line) to output, and if condition method name"
+if ARGV.size < 2
+  puts "Help: provide filename, field position (-1 for whole line) to output, and optional if condition method name"
   exit 1
 end
 
-s = Splitter.new(ARGV[0], ARGV[1], if_condition: ARGV[2], data_builder: :count_invoice_ledger_pairs, arguments: ARGV[3..-1])
+s = Splitter.new(ARGV[0], ARGV[1], if_condition: ARGV[2], arguments: ARGV[3..-1])
 s.split
