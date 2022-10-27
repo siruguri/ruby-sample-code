@@ -7,7 +7,7 @@ class Splitter
   def initialize(filepath, output_position, if_condition: nil, data_builder: nil, arguments: [])
     # which field to output
     @filepath = filepath
-    @output_position = output_position.to_i
+    @output_position = output_position
     @if_condition = if_condition
     @data_builder = data_builder
     @_arguments = arguments
@@ -18,13 +18,17 @@ class Splitter
     CSV.foreach(@filepath, liberal_parsing: true) do |fields|
       fs = fields.map { |t| t&.strip }
       if if_condition.nil? || method(if_condition).call(fs)
-        if output_position == -1
+        if output_position == '-1'
           @output_lines << fs
         else
           if data_builder
             method(data_builder).call fs
           else
-            puts fs[output_position]
+            str = output_positions.map do |position|
+              v = fs[position] =~ /,/ ? "\"#{fs[position]}\"" : fs[position]
+            end.join(',')
+
+            puts str
           end
         end
       end
@@ -36,8 +40,17 @@ class Splitter
   end
 
   private
+
+  def output_positions
+    @output_position.split(',').map { |v| v.to_i }
+  end
+
   def arguments(position)
     @_arguments[position]
+  end
+
+  def type_is_vendor(fields)
+    fields[2] == 'VendorID'
   end
 
   def more_recent_than(fields)
@@ -64,6 +77,11 @@ class Splitter
 
   def is_charge(fields)
     fields[23] == 'Invoice'
+  end
+
+  def ledger_account_is(fields)
+    ledger_account_id = fields[5]
+    ledger_account_id == arguments(0)
   end
 
   def expense_in_period(fields)
@@ -122,10 +140,14 @@ class Splitter
       @invoice_list[fields[0]] << fields[5]
     end
   end
+
+  def is_equal(fields)
+    arguments(1) == fields[arguments(0).to_i]
+  end
 end
 
 if ARGV.size < 2
-  puts "Help: provide filename, field position (-1 for whole line) to output, and optional if condition method name"
+  puts "Help: provide filename, comma-sep field positions (-1 for whole line) to output, and optional if condition method name"
   exit 1
 end
 
