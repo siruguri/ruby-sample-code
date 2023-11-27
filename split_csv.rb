@@ -41,6 +41,10 @@ class Splitter
 
   private
 
+  def fields_in_position(fs, pos)
+    fs[pos.to_i]
+  end
+
   def output_positions
     @output_position.split(',').map { |v| v.to_i }
   end
@@ -53,14 +57,18 @@ class Splitter
     fields[2] == 'VendorID'
   end
 
-  def more_recent_than(fields)
+  def is_yardi_marketrent_more_recent_than(fields)
+    is_more_recent_than(fields) && fields_in_position(fields, arguments(2)) == 'Rent Change'
+  end
+
+  def is_more_recent_than(fields)
     begin
-      d = DateTime.strptime(fields[@_arguments[1].to_i].to_s, '%b %d %Y %H:%M%p').to_date
+      d = tz_date_field(fields_in_position(fields, arguments(1)))
     rescue Date::Error
       return false
     end
 
-    d >= cutoff_date
+    d && d >= cutoff_date
   end
 
   def cutoff_date
@@ -104,15 +112,49 @@ class Splitter
     @cid_list ||= arguments(0).split(',').map(&:strip)
   end
 
+  def yardi_prospect_history(fields)
+    date_str = fields[5]
+    date = long_date_field date_str
+
+    cond = date && start_date <= date && date <= end_date
+    if cond
+      cond = cond && (first_contact = fields[8] == '-1')
+    end
+
+    cond
+  end
+
+  def start_date
+    @_sd ||= ordinary_date(arguments(0))
+  end
+
+  def end_date
+    @_endd ||= ordinary_date(arguments(1))
+  end
+
+  def ordinary_date(s)
+    Date.strptime(s, '%Y-%m-%d')
+  end
+
   def datetime_field(s)
     return nil if s.blank?
-    DateTime.strptime(s, '%b %d %Y %H:%M%p')
+    begin
+      return DateTime.strptime(s, '%b %d %Y %H:%M%p')
+    rescue Date::Error => e
+      return nil
+    end
   end
 
   def long_date_field(s)
     # "Feb 13 2014 12:00AM" -- AKA
     # '%b %d %Y %H:%M%p'
     datetime_field(s)&.to_date
+  end
+
+  def tz_date_field(s)
+    # "5/13/2012 12:00 AM -07:00" -- AKA
+    return nil if s.blank?
+    DateTime.strptime(s, '%m/%d/%Y %H:%M %p %z').to_date
   end
 
   def expense_in_ledger_account(fields)
@@ -147,7 +189,7 @@ class Splitter
 end
 
 if ARGV.size < 2
-  puts "Help: provide filename, comma-sep field positions (-1 for whole line) to output, and optional if condition method name"
+  puts "Help: provide filename, comma-sep field positions (-1 for whole line) to output, and optional if condition method name, followed by arguments which are counted from 0 onwards in the code"
   exit 1
 end
 
