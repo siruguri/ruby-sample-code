@@ -1,45 +1,61 @@
 require 'csv'
 require 'pry'
+require_relative 'cli_reader'
 
 class Splitter
-  attr_reader :if_condition, :output_position, :data_builder, :invoice_list
+  attr_reader :if_condition, :output_position, :invoice_list
 
-  def initialize(filepath, output_position, if_condition: nil, data_builder: nil, arguments: [])
+  def initialize(filepath, output_position, if_condition: nil, arguments: [])
     # which field to output
     @filepath = filepath
     @output_position = output_position
     @if_condition = if_condition
-    @data_builder = data_builder
     @_arguments = arguments
     @output_lines = []
+    @value_counts = Hash.new { |a, b| a[b] = Hash.new(0) }
+
+    cli_reader = CliReader.new(arguments)
+    positions = cli_reader.parameter_argument('--input-positions')
+    @positions = positions.split(',').map { |t| t.strip.to_i }
+    @unique_position = @positions[0] if @positions.size == 1
   end
 
   def split
     CSV.foreach(@filepath, liberal_parsing: true) do |fields|
       fs = fields.map { |t| t&.strip }
       if if_condition.nil? || method(if_condition).call(fs)
-        if output_position == '-1'
+        next if @output_position == 'none'
+        if output_position == 'all'
           @output_lines << fs
         else
-          if data_builder
-            method(data_builder).call fs
-          else
-            str = output_positions.map do |position|
-              v = fs[position] =~ /,/ ? "\"#{fs[position]}\"" : fs[position]
-            end.join(',')
-
-            puts str
+          fs = output_positions.map do |position|
+            v = fs[position] =~ /,/ ? "\"#{fs[position]}\"" : fs[position]
           end
+          @output_lines << fs
         end
       end
     end
 
-    puts(CSV.generate do |csv|
-      @output_lines.each { |l| csv << l }
-    end)
+    if @output_lines.size > 0
+      puts(CSV.generate do |csv|
+             @output_lines.each { |l| csv << l }
+           end)
+    end
+
+    output_value_counts if if_condition == 'value_counts'
   end
 
   private
+
+  def output_value_counts
+    @value_counts.each do |position, tags|
+      puts position
+      puts '| '
+      tags.sort_by { |k, v| -1 * v }.each do |tag, count|
+        puts(sprintf("|- %31s: %d", tag, count))
+      end
+    end
+  end
 
   def fields_in_position(fs, pos)
     fs[pos.to_i]
@@ -57,8 +73,32 @@ class Splitter
     fields[2] == 'VendorID'
   end
 
+  def value_in_position(fields, position: nil)
+    if position.nil?
+      if @unique_position.nil?
+        raise 'No input position specified'
+      end
+      fields[@unique_position]
+    else
+      fields[position]
+    end
+  end
+
+  def value_counts(fields)
+    if @positions.any? { |position| value_in_position(fields, position: position) == '(No column name)' } ||
+       @positions.any? { |position| value_in_position(fields, position: position) =~ /Segment/ }
+      return false
+    end
+
+    @positions.each do |position|
+      @value_counts[position][value_in_position(fields, position: position)] += 1
+    end
+
+    true
+  end
+
   def is_yardi_marketrent_more_recent_than(fields)
-    is_more_recent_than(fields) && fields_in_position(fields, arguments(2)) == 'Rent Change'
+    is_more_recent_than(fields) && value_in_position(fields) == 'Rent Change'
   end
 
   def is_more_recent_than(fields)
@@ -189,7 +229,7 @@ class Splitter
 end
 
 if ARGV.size < 2
-  puts "Help: provide filename, comma-sep field positions (-1 for whole line) to output, and optional if condition method name, followed by arguments which are counted from 0 onwards in the code"
+  puts "Help: provide filename, comma-sep field positions ('all' for whole line; 'none' for no output) to output, and optional if condition method name, followed by arguments which are counted from 0 onwards in the code"
   exit 1
 end
 
