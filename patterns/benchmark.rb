@@ -2,7 +2,10 @@ require 'benchmark'
 
 class Candidates
   def initialize
-    @hash = {'a' => '5', 'b' => '10' }
+    @hash = {}
+    1.upto(10000).each do |n|
+      @hash["#{n}"] = n
+    end
     @rev = {}
   end
   def patt1
@@ -14,12 +17,20 @@ class Candidates
     @rev[key + 'num'] = key
     @rev[key + 'str'] = key.to_i
   end
+
+  def check_key1
+    @hash.keys.include?('a')
+  end
+
+  def check_key2
+    !@hash['a'].nil?
+  end
 end
 
-n = 100000
+n = 1000000
 c = Candidates.new
 
 Benchmark.bmbm do |x|
-  x.report { c.patt1 }
-  x.report { c.patt2 1 }
+  x.report { c.check_key1 }
+  x.report { c.check_key2 }
 end

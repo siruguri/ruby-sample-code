@@ -5,24 +5,31 @@ require_relative 'cli_reader'
 class Splitter
   attr_reader :if_condition, :output_position, :invoice_list
 
-  def initialize(filepath, output_position, if_condition: nil, arguments: [])
+  def initialize(filepath, arguments: [])
     # which field to output
+
+    arguments ||= []
     @filepath = filepath
-    @output_position = output_position
-    @if_condition = if_condition
-    @_arguments = arguments
+    @_arguments = arguments || []
     @output_lines = []
     @value_counts = Hash.new { |a, b| a[b] = Hash.new(0) }
 
-    cli_reader = CliReader.new(arguments)
+    cli_reader = CliReader.new(@_arguments)
+    @output_position = cli_reader.parameter_argument('--output', default: 'all')
+    @if_condition = cli_reader.parameter_argument('--method', default: nil)
+
     positions = cli_reader.parameter_argument('--input-positions')
-    @positions = positions.split(',').map { |t| t.strip.to_i }
-    @unique_position = @positions[0] if @positions.size == 1
+    @positions = positions ? positions.split(',').map { |t| t.strip.to_i } : nil
+    @unique_position = @positions[0] if @positions&.size == 1
+
+    @header_row = cli_reader.parameter_argument('--header-row-index').to_i
   end
 
   def split
+    row_index = 0
     CSV.foreach(@filepath, liberal_parsing: true) do |fields|
       fs = fields.map { |t| t&.strip }
+      parse_headers(fields) if row_index == @header_row
       if if_condition.nil? || method(if_condition).call(fs)
         next if @output_position == 'none'
         if output_position == 'all'
@@ -34,6 +41,8 @@ class Splitter
           @output_lines << fs
         end
       end
+
+      row_index += 1
     end
 
     if @output_lines.size > 0
@@ -47,9 +56,20 @@ class Splitter
 
   private
 
+  def header_label_for(position)
+    @_header_labels[position]
+  end
+
+  def parse_headers(fields)
+    @_header_labels ||= {}
+    fields.each_with_index do |value, index|
+      @_header_labels[index] = value
+    end
+  end
+
   def output_value_counts
     @value_counts.each do |position, tags|
-      puts position
+      puts header_label_for(position)
       puts '| '
       tags.sort_by { |k, v| -1 * v }.each do |tag, count|
         puts(sprintf("|- %31s: %d", tag, count))
@@ -228,10 +248,12 @@ class Splitter
   end
 end
 
-if ARGV.size < 2
-  puts "Help: provide filename, comma-sep field positions ('all' for whole line; 'none' for no output) to output, and optional if condition method name, followed by arguments which are counted from 0 onwards in the code"
+if ARGV.size < 1
+  puts "Help: provide filename at the end, and these arguments:
+        --output: comma-sep field positions ('all' for whole line; 'none' for no output)
+        --method, and some other shit I don't know right now"
   exit 1
 end
 
-s = Splitter.new(ARGV[0], ARGV[1], if_condition: ARGV[2], arguments: ARGV[3..-1])
+s = Splitter.new(ARGV[-1], arguments: ARGV[0..-2])
 s.split
