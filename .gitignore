@@ -9,3 +9,4 @@ try.rb
 redcarpet
 *.html
 .DS_Store
+*.json

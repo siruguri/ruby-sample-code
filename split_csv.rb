@@ -3,20 +3,18 @@ require 'pry'
 require_relative 'cli_reader'
 
 class Splitter
-  attr_reader :if_condition, :output_position, :invoice_list
+  attr_reader :if_conditions, :output_position, :invoice_list
 
   def initialize(filepath, arguments: [])
-    # which field to output
-
-    arguments ||= []
     @filepath = filepath
-    @_arguments = arguments || []
     @output_lines = []
     @value_counts = Hash.new { |a, b| a[b] = Hash.new(0) }
 
-    cli_reader = CliReader.new(@_arguments)
+    cli_reader = CliReader.new(arguments)
     @output_position = cli_reader.parameter_argument('--output', default: 'all')
-    @if_condition = cli_reader.parameter_argument('--method', default: nil)
+    @if_conditions = cli_reader.parameter_argument('--method', default: '').split(',')
+
+    @_arguments = cli_reader.parameter_argument('--arguments', default: '').split(',')
 
     positions = cli_reader.parameter_argument('--input-positions')
     @positions = positions ? positions.split(',').map { |t| t.strip.to_i } : nil
@@ -30,7 +28,7 @@ class Splitter
     CSV.foreach(@filepath, liberal_parsing: true) do |fields|
       fs = fields.map { |t| t&.strip }
       parse_headers(fields) if row_index == @header_row
-      if if_condition.nil? || method(if_condition).call(fs)
+      if if_conditions.empty? || if_conditions.all? { |condition| true == check_condition(condition, @_arguments, fs) }
         next if @output_position == 'none'
         if output_position == 'all'
           @output_lines << fs
@@ -51,10 +49,24 @@ class Splitter
            end)
     end
 
-    output_value_counts if if_condition == 'value_counts'
+    output_value_counts if if_conditions.include?('value_counts')
   end
 
   private
+
+  def check_condition(method_signature, argument_signatures, all_fields)
+    (condition_name, check_column) = method_signature.split(':')
+    check_column = check_column.to_i
+
+    args = argument_signatures.map { |sig| sig.split(':') }
+    argument = args.find { |pair| pair[0] == condition_name }
+    if argument.nil?
+      raise "#{condition_name} has no arguments to use."
+    end
+
+    argument = argument[1]
+    send(condition_name.to_sym, all_fields[check_column], argument)
+  end
 
   def header_label_for(position)
     @_header_labels[position]
@@ -121,18 +133,31 @@ class Splitter
     is_more_recent_than(fields) && value_in_position(fields) == 'Rent Change'
   end
 
-  def is_more_recent_than(fields)
-    begin
-      d = tz_date_field(fields_in_position(fields, arguments(1)))
-    rescue Date::Error
-      return false
-    end
-
-    d && d >= cutoff_date
+  def is_time_equal(check_this_column, check_against)
+    d = get_a_date(check_this_column)
+    !!d && d == cutoff_date(check_against)
   end
 
-  def cutoff_date
-    @_cd ||= Date.parse @_arguments[0]
+  def is_more_recent_than(check_this_column, check_against)
+    d = get_a_date(check_this_column)
+    !!d && d >= cutoff_date(check_against)
+  end
+
+  def get_a_date(string)
+    begin
+      d = tz_date_field(string)
+    rescue Date::Error
+      begin
+        d = long_date_field(string)
+      rescue Date::Error
+        false
+      end
+    end
+  end
+
+  def cutoff_date(value)
+    @_cds ||= {}
+    @_cds[value] ||= Date.parse value
   end
 
   def yesterday
@@ -243,15 +268,16 @@ class Splitter
     end
   end
 
-  def is_equal(fields)
-    arguments(1) == fields[arguments(0).to_i]
+  def is_equal(field_value, condition_argument)
+    condition_argument == field_value
   end
 end
 
 if ARGV.size < 1
   puts "Help: provide filename at the end, and these arguments:
         --output: comma-sep field positions ('all' for whole line; 'none' for no output)
-        --method, and some other shit I don't know right now"
+        --method (you probably want to use is_equal:<n> in most cases; or maybe is_more_recent_than:<n>)
+        remaining args depend on the method, for example, for is_equal, you want to supply --arguments <value it's equal to>"
   exit 1
 end
 
