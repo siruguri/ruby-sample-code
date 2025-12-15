@@ -1,0 +1,2 @@
+gem "google-apis-drive_v3"
+gem "googleauth"
