@@ -10,3 +10,4 @@ redcarpet
 *.html
 .DS_Store
 *.json
+*.yaml
