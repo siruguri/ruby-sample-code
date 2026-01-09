@@ -41,12 +41,14 @@ class SFTPClient
   end
 
   def run
-    if @action == 'print'
-      files = list_files_newer_than(timestamp:)
-      files = filter_by_patterns(files) if @matching_patterns&.any?
-      files.each do |file|
-        puts file
-      end
+    files = list_files_newer_than(timestamp:)
+    files = filter_by_patterns(files) if @matching_patterns&.any?
+
+    case @action
+    when 'print'
+      files.{ |file| puts file }
+    when 'download'
+      download_all files
     end
   end
 
@@ -61,6 +63,11 @@ class SFTPClient
 
     unless @remote_dir.present?
       $stderr.puts "No sftp directory provided."
+      error = true
+    end
+
+    unless @action.nil? || @action.in?(['print', 'download'])
+      $stderr.puts "No valid action provided."
       error = true
     end
 
@@ -126,9 +133,9 @@ class SFTPClient
     session.dir.entries(@remote_dir)
   end
 
-  def download_all
+  def download_all(list)
     async_sessions = []
-    @available_list.each do |name|
+    list.each do |name|
       async_sessions << @client.session.download(name, name)
     end
 
@@ -138,7 +145,7 @@ class SFTPClient
   end
 end
 
-# ruby sftp_client.rb --hostname canopyanalytics.files.com --remote-dir amcllc-staging-2 --newer-than 20260105:0000 --action print
+# ruby sftp_client.rb --hostname canopyanalytics.files.com --remote-dir amcllc-staging-2 --newer-than 20260105:0000 --action <print|download>
 
 sftp_client = SFTPClient.new
 sftp_client.run
