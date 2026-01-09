@@ -1,5 +1,7 @@
 require_relative '../../app/lib/utilities/s3_manager'
 require 'aws-sdk-s3'
+require 'aws-sdk-core'
+Aws.use_bundled_cert!
 
 region = ENV['AWS_REGION'] || 'us-west-1'
 creds_folder = ENV['CREDS_FOLDER'] || '.'

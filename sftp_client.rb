@@ -1,22 +1,61 @@
+require 'pry'
 require 'net/sftp'
 require 'date'
 require 'active_support/core_ext/numeric/time'
 require 'optparse'
 
 class SFTPClient
-  attr_reader :session, :filecount_threshold
+  attr_reader :session, :timestamp
 
   MAX_SIMULTANEOUS_DOWNLOADS = 10
 
-  def initialize(host_name:, remote_dir: nil, local_dir: nil, logger: nil, expected_files: nil, filecount_threshold: -1)
-    @remote_dir = remote_dir
-    @local_dir = local_dir
-    @expected_files = expected_files
-    @filecount_threshold = filecount_threshold
-    @logger = logger
+  def initialize
+    options = {}
+    parser = OptionParser.new do |opts|
+      opts.on('-h', '--hostname=HOSTNAME') do |hostname|
+        @hostname = hostname
+      end
 
+      opts.on('-d', '--remote-dir=REMOTE_DIR') do |remote_dir|
+        @remote_dir = remote_dir
+      end
+
+      opts.on('-m', '--newer-than=TIMESTAMP') do |timestamp|
+        @timestamp = DateTime.strptime(timestamp, '%Y%m%d:%H%M')
+      end
+
+      opts.on('-a', '--action=ACTION') do |action|
+        @action = action
+      end
+    end
+
+    parser.parse!
+    process_cli_errors!
+
+    @timestamp ||= DateTime.now - 1.day
+    @action ||= 'print'
+  end
+
+  def run
+    if @action == 'print'
+      list_files_newer_than(timestamp:).each do |file|
+        puts file
+      end
+    end
+  end
+
+  private
+
+  def process_cli_errors!
+    unless @hostname.present?
+      $stderr.puts "No sftp hostname provided."
+      exit -1
+    end
+  end
+
+  def session
     (user_name, password) = environment_credentials
-    @session = open_session(host_name, user_name, password)
+    @session ||= open_session(@hostname, user_name, password)
   end
 
   def list_files_newer_than(timestamp:)
@@ -26,8 +65,6 @@ class SFTPClient
       filepath
     end
   end
-
-  private
 
   def list_files_compared_to(last_day, comparison: :older)
     listings = all_remote_directory_contents
@@ -44,10 +81,10 @@ class SFTPClient
   end
 
   def environment_credentials
-    user_name = ENV['exavault_username'] ||
-                raise(Integrations::Exceptions::BadCredentialsException.new('exavault_username must be set'))
-    password = ENV['exavault_password'] ||
-               raise(Integrations::Exceptions::BadCredentialsException.new('exavault_password must be set'))
+    user_name = ENV['sftp_username'] ||
+                raise(Integrations::Exceptions::BadCredentialsException.new('SFTP username must be set'))
+    password = ENV['sftp_password'] ||
+               raise(Integrations::Exceptions::BadCredentialsException.new('SFTP password must be set'))
     [user_name, password]
   end
 
@@ -63,37 +100,7 @@ class SFTPClient
   end
 
   def all_remote_directory_contents
-    @session.dir.entries(@remote_dir)
-  end
-end
-
-class Confirmer
-  def initialize
-    options = {}
-    parser = OptionParser.new do |opts|
-      opts.on('-s', '--subdomain=SUBDOMAIN') do |subd|
-        @subdomain = subd
-      end
-
-      opts.on('-h', '--hostname=HOSTNAME') do |hostname|
-        @hostname = hostname
-      end
-
-      opts.on('-d', '--remote-dir=REMOTE_DIR') do |remote_dir|
-        @remote_dir = remote_dir
-      end
-
-      opts.on('-m', '--newer-than=TIMESTAMP') do |timestamp|
-        @timestamp = DateTime.strptime(timestamp, '%Y%m%d:%H%M')
-      end
-    end
-
-    parser.parse!
-
-    @timestamp ||= DateTime.now - 1.day
-    @client = SFTPClient.new(host_name: @hostname, remote_dir: @remote_dir)
-
-    @organization = Organization.find_by(subdomain: @subdomain)
+    session.dir.entries(@remote_dir)
   end
 
   def download_all
@@ -106,31 +113,10 @@ class Confirmer
       download_operation.wait
     end
   end
-
-  def show_on_sftp
-    @available_list = @client.list_files_newer_than(timestamp: @timestamp)
-    @available_list.each do |name|
-      puts name
-    end
-  end
-
-  def compare
-    expected_codenames = @organization.unsafe_all_active_communities.
-                           pluck(:codename).sort
-
-    known_codenames = @available_list.select { |name| name =~ /LEASES/ }
-                        .map { |name| name.gsub(/_.*/, '') }.sort
-
-    puts expected_codenames - known_codenames
-  end
 end
 
-#Confirmer.new(ARGV[0], ARGV[1], ARGV[2]).compare
+# ruby sftp_client.rb --hostname canopyanalytics.files.com --remote-dir amcllc-staging-2 --newer-than 20260105:0000 --action print
 
-# hostname, remote dir, subdomain (for example:
-#           ruby sftp_client.rb --hostname canopyanalytics.files.com --remote-dir amcllc-staging-2 --subdomain amcllc
-# )
+sftp_client = SFTPClient.new
+sftp_client.run
 
-sftp_client = Confirmer.new()
-sftp_client.show_on_sftp
-sftp_client.download_all
