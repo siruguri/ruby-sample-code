@@ -30,7 +30,10 @@ class SFTPClient
       end
 
       opts.on('-p', '--matching-patterns=PATTERNS') do |patterns|
-        @matching_patterns = patterns.split('|').map { |pattern| Regexp.new(pattern) }
+        # Split by & to get AND groups, then split each group by | to get OR patterns
+        @matching_patterns = patterns.split('&').map do |group|
+          group.split('|').map { |pattern| Regexp.new(pattern) }
+        end
       end
 
       opts.on('-l', '--local-dir=LOCAL_DIR') do |local_dir|
@@ -117,7 +120,10 @@ class SFTPClient
   end
 
   def matches_patterns?(filename)
-    @matching_patterns.all? { |pattern| filename.match?(pattern) }
+    # All groups must match (AND), where each group passes if any pattern matches (OR)
+    @matching_patterns.all? do |group|
+      group.any? { |pattern| filename.match?(pattern) }
+    end
   end
 
   def environment_credentials
@@ -144,20 +150,23 @@ class SFTPClient
   end
 
   def download_all(list)
-    async_sessions = []
-    list.each do |name|
-      local_path = @local_dir ? File.join(@local_dir, name) : name
-      async_sessions << session.download("#{@remote_dir}/#{name}", local_path)
-    end
+    list.each_slice(MAX_SIMULTANEOUS_DOWNLOADS) do |batch|
+      async_sessions = []
+      batch.each do |name|
+        local_path = @local_dir ? File.join(@local_dir, name) : name
+        puts "Starting download of #{name} to #{local_path}"
+        async_sessions << session.download("#{@remote_dir}/#{name}", local_path)
+      end
 
-    async_sessions.each do |download_operation|
-      download_operation.wait
+      async_sessions.each do |download_operation|
+        download_operation.wait
+      end
     end
   end
 end
 
-# ruby sftp_client.rb --hostname canopyanalytics.files.com --remote-dir amcllc-staging-2 --newer-than 20260105:0000 --action <print|download> --local-dir /path/to/local/dir
+# ruby sftp_client.rb --hostname canopyanalytics.files.com --remote-dir amcllc-staging-2 --newer-than 20260105:0000
+#                     --action <print|download> --local-dir /path/to/local/dir --matching-patterns 'a|b|c&d|e' 
 
 sftp_client = SFTPClient.new
 sftp_client.run
-
