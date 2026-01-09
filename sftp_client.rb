@@ -27,6 +27,10 @@ class SFTPClient
       opts.on('-a', '--action=ACTION') do |action|
         @action = action
       end
+
+      opts.on('-p', '--matching-patterns=PATTERNS') do |patterns|
+        @matching_patterns = patterns.split('|').map { |pattern| Regexp.new(pattern) }
+      end
     end
 
     parser.parse!
@@ -38,7 +42,9 @@ class SFTPClient
 
   def run
     if @action == 'print'
-      list_files_newer_than(timestamp:).each do |file|
+      files = list_files_newer_than(timestamp:)
+      files = filter_by_patterns(files) if @matching_patterns&.any?
+      files.each do |file|
         puts file
       end
     end
@@ -47,10 +53,18 @@ class SFTPClient
   private
 
   def process_cli_errors!
+    error = false
     unless @hostname.present?
       $stderr.puts "No sftp hostname provided."
-      exit -1
+      error = true
     end
+
+    unless @remote_dir.present?
+      $stderr.puts "No sftp directory provided."
+      error = true
+    end
+
+    exit -1 if error
   end
 
   def session
@@ -59,15 +73,12 @@ class SFTPClient
   end
 
   def list_files_newer_than(timestamp:)
-    return if @remote_dir.nil?
-
-    list_files_compared_to(timestamp, comparison: :newer).map do |filepath|
+    list_files_compared_to(remote_listings, timestamp, comparison: :newer).map do |filepath|
       filepath
     end
   end
 
-  def list_files_compared_to(last_day, comparison: :older)
-    listings = all_remote_directory_contents
+  def list_files_compared_to(listings, last_day, comparison: :older)
     ans = listings.filter do |listing|
       listing.file? && mtime_compared_passes?(listing, last_day, comparison:)
     end
@@ -78,6 +89,18 @@ class SFTPClient
   def mtime_compared_passes?(file, limit, comparison:)
     filetime = Time.at(file.attributes.mtime).to_datetime
     comparison == :older ? filetime < limit : filetime >= limit
+  end
+
+  def remote_listings
+    @remote_listings ||= all_remote_directory_contents
+  end
+
+  def filter_by_patterns(filenames)
+    filenames.select { |filename| matches_patterns?(filename) }
+  end
+
+  def matches_patterns?(filename)
+    @matching_patterns.any? { |pattern| filename.match?(pattern) }
   end
 
   def environment_credentials
