@@ -1,4 +1,5 @@
 require 'pry'
+require 'pry-byebug'
 require 'net/sftp'
 require 'date'
 require 'active_support/core_ext/numeric/time'
@@ -31,6 +32,10 @@ class SFTPClient
       opts.on('-p', '--matching-patterns=PATTERNS') do |patterns|
         @matching_patterns = patterns.split('|').map { |pattern| Regexp.new(pattern) }
       end
+
+      opts.on('-l', '--local-dir=LOCAL_DIR') do |local_dir|
+        @local_dir = local_dir
+      end
     end
 
     parser.parse!
@@ -46,7 +51,7 @@ class SFTPClient
 
     case @action
     when 'print'
-      files.{ |file| puts file }
+      files.each { |file| puts file }
     when 'download'
       download_all files
     end
@@ -66,8 +71,13 @@ class SFTPClient
       error = true
     end
 
-    unless @action.nil? || @action.in?(['print', 'download'])
+    unless @action.nil? || ['print', 'download'].include?(@action)
       $stderr.puts "No valid action provided."
+      error = true
+    end
+
+    if @local_dir.present? && !Dir.exist?(@local_dir)
+      $stderr.puts "Local directory '#{@local_dir}' does not exist."
       error = true
     end
 
@@ -107,7 +117,7 @@ class SFTPClient
   end
 
   def matches_patterns?(filename)
-    @matching_patterns.any? { |pattern| filename.match?(pattern) }
+    @matching_patterns.all? { |pattern| filename.match?(pattern) }
   end
 
   def environment_credentials
@@ -136,7 +146,8 @@ class SFTPClient
   def download_all(list)
     async_sessions = []
     list.each do |name|
-      async_sessions << @client.session.download(name, name)
+      local_path = @local_dir ? File.join(@local_dir, name) : name
+      async_sessions << session.download("#{@remote_dir}/#{name}", local_path)
     end
 
     async_sessions.each do |download_operation|
@@ -145,7 +156,7 @@ class SFTPClient
   end
 end
 
-# ruby sftp_client.rb --hostname canopyanalytics.files.com --remote-dir amcllc-staging-2 --newer-than 20260105:0000 --action <print|download>
+# ruby sftp_client.rb --hostname canopyanalytics.files.com --remote-dir amcllc-staging-2 --newer-than 20260105:0000 --action <print|download> --local-dir /path/to/local/dir
 
 sftp_client = SFTPClient.new
 sftp_client.run
