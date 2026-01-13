@@ -57,30 +57,52 @@ class SFTPClient
       files.each { |file| puts file }
     when 'download'
       download_all files
+    when 'upload'
+      upload_all_files
     end
   end
 
   private
 
+  def upload_all_files
+    files = Dir.children(@local_dir).select do |name|
+      File.file?(File.join(@local_dir, name))
+    end
+
+    files.each_slice(MAX_SIMULTANEOUS_DOWNLOADS) do |batch|
+      async_sessions = []
+      batch.each do |name|
+        local_path = File.join(@local_dir, name)
+        remote_path = "#{@remote_dir}/#{name}"
+        puts "Starting upload of #{local_path} to #{remote_path}"
+        async_sessions << session.upload(local_path, remote_path)
+      end
+
+      async_sessions.each do |upload_operation|
+        upload_operation.wait
+      end
+    end
+  end
+
   def process_cli_errors!
     error = false
-    unless @hostname.present?
+    if @hostname.nil?
       $stderr.puts "No sftp hostname provided."
       error = true
     end
 
-    unless @remote_dir.present?
-      $stderr.puts "No sftp directory provided."
-      error = true
-    end
-
-    unless @action.nil? || ['print', 'download'].include?(@action)
+    unless @action.nil? || ['print', 'upload', 'download'].include?(@action)
       $stderr.puts "No valid action provided."
       error = true
     end
 
-    if @local_dir.present? && !Dir.exist?(@local_dir)
-      $stderr.puts "Local directory '#{@local_dir}' does not exist."
+    if @remote_dir.nil?
+      $stderr.puts "No sftp directory provided."
+      error = true
+    end
+
+    if @action != 'print' && !@local_dir.nil? && !Dir.exist?(@local_dir)
+      $stderr.puts "Local directory '#{@local_dir}' does not exist for upload/download action."
       error = true
     end
 
@@ -154,6 +176,7 @@ class SFTPClient
       async_sessions = []
       batch.each do |name|
         local_path = @local_dir ? File.join(@local_dir, name) : name
+        next if File.exist?(local_path)
         puts "Starting download of #{name} to #{local_path}"
         async_sessions << session.download("#{@remote_dir}/#{name}", local_path)
       end
