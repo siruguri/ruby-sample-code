@@ -49,8 +49,10 @@ class SFTPClient
   end
 
   def run
-    files = list_files_newer_than(timestamp:)
-    files = filter_by_patterns(files) if @matching_patterns&.any?
+    unless @action == 'upload'
+      files = list_files_newer_than(timestamp:)
+      files = filter_by_patterns(files) if @matching_patterns&.any?
+    end
 
     case @action
     when 'print'
@@ -68,6 +70,8 @@ class SFTPClient
     files = Dir.children(@local_dir).select do |name|
       File.file?(File.join(@local_dir, name))
     end
+
+    files = filter_by_patterns(files) if @matching_patterns&.any?
 
     files.each_slice(MAX_SIMULTANEOUS_DOWNLOADS) do |batch|
       async_sessions = []
