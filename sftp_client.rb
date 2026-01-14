@@ -191,7 +191,7 @@ class SFTPClient
 end
 
 # ruby sftp_client.rb --hostname canopyanalytics.files.com --remote-dir amcllc-staging-2 --newer-than 20260105:0000
-#                     --action <print|download> --local-dir /path/to/local/dir --matching-patterns 'a|b|c&d|e' 
+#                     --action <print|upload|download> --local-dir /path/to/local/dir --matching-patterns 'a|b|c&d|e' 
 
 sftp_client = SFTPClient.new
 sftp_client.run
