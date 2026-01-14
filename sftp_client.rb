@@ -1,5 +1,3 @@
-require 'pry'
-require 'pry-byebug'
 require 'net/sftp'
 require 'date'
 require 'active_support/core_ext/numeric/time'
